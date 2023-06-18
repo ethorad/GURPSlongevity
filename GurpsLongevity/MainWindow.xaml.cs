@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace GurpsLongevity
 {
@@ -20,9 +21,17 @@ namespace GurpsLongevity
     /// </summary>
     public partial class MainWindow : Window
     {
+        private LongevityTable longevityTable;
         public MainWindow()
         {
+            longevityTable = new LongevityTable();
+            longevityTable.GetLongevity(20, 20, 20, 20, false, 0);
             InitializeComponent();
+        }
+
+        private void doTest(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(longevityTable.GetLongevity(5, 7, 5, 10, false, 0).ToString());
         }
     }
 }
