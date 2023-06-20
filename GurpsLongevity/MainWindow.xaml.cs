@@ -1,18 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using static System.Net.Mime.MediaTypeNames;
+using ScottPlot;
 
 namespace GurpsLongevity
 {
@@ -24,14 +12,35 @@ namespace GurpsLongevity
         private LongevityTable longevityTable;
         public MainWindow()
         {
-            longevityTable = new LongevityTable();
-            longevityTable.GetLongevity(20, 20, 20, 20, false, 0);
             InitializeComponent();
-        }
 
-        private void doTest(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show(longevityTable.GetLongevity(5, 7, 5, 10, false, 0).ToString());
+            longevityTable = new LongevityTable();
+
+            double[] dataX = new double[21];
+            double[] data1 = new double[21];
+            double[] data2 = new double[21];
+            CharacterSheet foo = new CharacterSheet();
+            for (int i = 0; i < 21; i++)
+            {
+                dataX[i] = i;
+                foo.Stats.ST = i; foo.Stats.DX = i; foo.Stats.IQ = i; foo.Stats.HT = i;
+
+                foo.Stats.Fitness = eFitness.Normal;
+                foo.Stats.TL = 5;
+                data1[i] = longevityTable.GetLongevity(foo);
+                
+                foo.Stats.Fitness = eFitness.VeryFit;
+                foo.Stats.TL = 3;
+                data2[i] = longevityTable.GetLongevity(foo);
+            }
+
+            samplePlot.Plot.AddScatter(dataX, data1,label:"Normal TL 5");
+            samplePlot.Plot.AddScatter(dataX, data2,label:"Very Fit TL 3");
+            samplePlot.Plot.Legend(true, Alignment.UpperLeft);
+            samplePlot.Plot.XLabel("Starting HT");
+            samplePlot.Plot.YLabel("Age at death");
+            samplePlot.Refresh();
+
         }
     }
 }

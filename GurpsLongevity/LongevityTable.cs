@@ -10,27 +10,29 @@ namespace GurpsLongevity
 {
     class LongevityTable
     {
-        private Dictionary<string, double> longevityValues;
+        private Dictionary<string, double> longevityRollsValues;
 
         internal LongevityTable()
         {
-            longevityValues = new Dictionary<string, double>();
+            longevityRollsValues = new Dictionary<string, double>();
         }
 
-        internal void AddLongevity(StatBlock stats, double longevity)
+        private void AddLongevityRolls(StatBlock stats, double longevity)
         {
             string key = GetSortedStatBlock(stats).ToString();
-            if (!longevityValues.ContainsKey(key))
+            if (!longevityRollsValues.ContainsKey(key))
             {
-                longevityValues.Add(key, longevity);
+                longevityRollsValues.Add(key, longevity);
             }
         }
 
-        internal double GetLongevity(int ST, int DX, int IQ, int HT, bool longevity, int TL)
+        public double GetLongevity(CharacterSheet character)
         {
-            return GetLongevity(new StatBlock(ST, DX, IQ, HT, longevity, TL));
+            double rolls = GetLongevityRolls(character.Stats);
+            return character.Traits.AgeFromRolls(rolls);
         }
-        internal double GetLongevity(StatBlock stats)
+
+        private double GetLongevityRolls(StatBlock stats)
         {
             StatBlock sortedBlock = GetSortedStatBlock(stats);
 
@@ -41,17 +43,17 @@ namespace GurpsLongevity
                 return -1;
 
             string key = sortedBlock.ToString();
-            if (longevityValues.ContainsKey(key))
-                return longevityValues[key];
+            if (longevityRollsValues.ContainsKey(key))
+                return longevityRollsValues[key];
             else
             {
-                double ans = CalculateLongevity(sortedBlock);
-                AddLongevity(sortedBlock, ans);
+                double ans = CalculateLongevityRolls(sortedBlock);
+                AddLongevityRolls(sortedBlock, ans);
                 return ans;
             }
         }
 
-        private double CalculateLongevity(StatBlock start)
+        private double CalculateLongevityRolls(StatBlock start)
         {
             List<Transition> children = GetChildren(start);
             string startStr = start.ToString();
@@ -62,7 +64,7 @@ namespace GurpsLongevity
                 if (child.Stats.ToString() == startStr)
                     denominator = 1 - child.Weight;
                 else
-                    numerator += child.Weight * (1 + GetLongevity(child.Stats));
+                    numerator += child.Weight * (1 + GetLongevityRolls(child.Stats));
             }
             return numerator / denominator;
 
@@ -76,25 +78,25 @@ namespace GurpsLongevity
             double IQprob = 0;
             double HTprob = 0;
 
-            foreach (RollResult rST in Enum.GetValues(typeof(RollResult)))
+            foreach (eRollResult rST in Enum.GetValues(typeof(eRollResult)))
             {
                 STprob = start.GetProbability(rST);
                 if (STprob == 0)
                     continue; // i.e. can't get to this state, so move to next
 
-                foreach (RollResult rDX in Enum.GetValues(typeof(RollResult)))
+                foreach (eRollResult rDX in Enum.GetValues(typeof(eRollResult)))
                 {
                     DXprob = start.GetProbability(rDX);
                     if (DXprob == 0)
                         continue;
 
-                    foreach (RollResult rIQ in Enum.GetValues(typeof(RollResult)))
+                    foreach (eRollResult rIQ in Enum.GetValues(typeof(eRollResult)))
                     {
                         IQprob = start.GetProbability(rIQ);
                         if (IQprob == 0)
                             continue;
 
-                        foreach (RollResult rHT in Enum.GetValues(typeof(RollResult)))
+                        foreach (eRollResult rHT in Enum.GetValues(typeof(eRollResult)))
                         {
                             HTprob = start.GetProbability(rHT);
                             if (HTprob == 0)
@@ -137,7 +139,7 @@ namespace GurpsLongevity
                 minStat = Math.Min(stats.ST, stats.DX);
             }
 
-            return new StatBlock(maxStat, midStat, minStat, stats.HT, stats.Longevity, stats.TL);
+            return new StatBlock(maxStat, midStat, minStat, stats.HT, stats.Longevity, stats.TL, stats.Fitness);
         }
 
     }
