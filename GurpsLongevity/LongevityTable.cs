@@ -10,6 +10,16 @@ namespace GurpsLongevity
 {
     class LongevityTable
     {
+        // Constants from rulebook
+        private const double baseAgingLevel1 = 50;
+        private const double baseAgingLevel2 = 70;
+        private const double baseAgingLevel3 = 90;
+
+        private const double agingPerRollLevel1 = 1;
+        private const double agingPerRollLevel2 = 0.5;
+        private const double agingPerRollLevel3 = 0.25;
+
+        // collection to hold calculated longevity stats
         private Dictionary<string, double> longevityRollsValues;
 
         internal LongevityTable()
@@ -19,7 +29,8 @@ namespace GurpsLongevity
 
         private void AddLongevityRolls(StatBlock stats, double longevity)
         {
-            string key = GetSortedStatBlock(stats).ToString();
+            stats.Sort();
+            string key = stats.ToString();
             if (!longevityRollsValues.ContainsKey(key))
             {
                 longevityRollsValues.Add(key, longevity);
@@ -28,27 +39,40 @@ namespace GurpsLongevity
 
         public double GetLongevity(CharacterSheet character)
         {
-            double rolls = GetLongevityRolls(character.Stats);
-            return character.Traits.AgeFromRolls(rolls);
+            double rolls = GetLongevityRolls(new StatBlock(character));
+
+            double agingLevel1 = baseAgingLevel1 * Math.Pow(2, character.ExtendedLifespan - character.ShortLifespan);
+            double agingLevel2 = baseAgingLevel2 * Math.Pow(2, character.ExtendedLifespan - character.ShortLifespan);
+            double agingLevel3 =baseAgingLevel3 * Math.Pow(2, character.ExtendedLifespan - character.ShortLifespan);
+
+            double tier1rolls = Math.Min(rolls, (agingLevel2 - agingLevel1) / agingPerRollLevel1);
+            rolls -= tier1rolls;
+
+            double tier2rolls = Math.Min(rolls, (agingLevel3 - agingLevel2) / agingPerRollLevel2);
+            rolls -= tier2rolls;
+
+            double tier3rolls = rolls;
+
+            return agingLevel1 + tier1rolls * agingPerRollLevel1 + tier2rolls * agingPerRollLevel2 + tier3rolls * agingPerRollLevel3;
         }
 
         private double GetLongevityRolls(StatBlock stats)
         {
-            StatBlock sortedBlock = GetSortedStatBlock(stats);
+            stats.Sort();
 
             // if any of the stats are zero, then we are dead
             // want a value of 0, however as we're adding 1 for the die roll
             // need to return -1 to cancel that out and have death occurr immediately
-            if (sortedBlock.IQ <= 0 || sortedBlock.HT <= 0)
+            if (stats.IQ <= 0 || stats.HT <= 0)
                 return -1;
 
-            string key = sortedBlock.ToString();
+            string key = stats.ToString();
             if (longevityRollsValues.ContainsKey(key))
                 return longevityRollsValues[key];
             else
             {
-                double ans = CalculateLongevityRolls(sortedBlock);
-                AddLongevityRolls(sortedBlock, ans);
+                double ans = CalculateLongevityRolls(stats);
+                AddLongevityRolls(stats, ans);
                 return ans;
             }
         }
@@ -80,25 +104,25 @@ namespace GurpsLongevity
 
             foreach (eRollResult rST in Enum.GetValues(typeof(eRollResult)))
             {
-                STprob = start.GetProbability(rST);
+                STprob = GetProbability(rST, start);
                 if (STprob == 0)
                     continue; // i.e. can't get to this state, so move to next
 
                 foreach (eRollResult rDX in Enum.GetValues(typeof(eRollResult)))
                 {
-                    DXprob = start.GetProbability(rDX);
+                    DXprob = GetProbability(rDX, start);
                     if (DXprob == 0)
                         continue;
 
                     foreach (eRollResult rIQ in Enum.GetValues(typeof(eRollResult)))
                     {
-                        IQprob = start.GetProbability(rIQ);
+                        IQprob = GetProbability(rIQ, start);
                         if (IQprob == 0)
                             continue;
 
                         foreach (eRollResult rHT in Enum.GetValues(typeof(eRollResult)))
                         {
-                            HTprob = start.GetProbability(rHT);
+                            HTprob = GetProbability(rHT, start);
                             if (HTprob == 0)
                                 continue;
 
@@ -113,33 +137,23 @@ namespace GurpsLongevity
             return children;
         }
 
-        private StatBlock GetSortedStatBlock(StatBlock stats)
+        private double GetProbability(eRollResult result, StatBlock stats)
         {
-            int maxStat = 0;
-            int midStat = 0;
-            int minStat = 0;
-            if (stats.ST >= stats.DX && stats.ST >= stats.IQ)
-            {
-                // ST is highest
-                maxStat = stats.ST;
-                midStat = Math.Max(stats.DX, stats.IQ);
-                minStat = Math.Min(stats.DX, stats.IQ);
-            }
-            else if (stats.DX >= stats.ST && stats.DX >= stats.IQ)
-            {
-                // DX is highest
-                maxStat = stats.DX;
-                midStat = Math.Max(stats.ST, stats.IQ);
-                minStat = Math.Min(stats.ST, stats.IQ);
-            }
-            else // IQ must be highest
-            {
-                maxStat = stats.IQ;
-                midStat = Math.Max(stats.ST, stats.DX);
-                minStat = Math.Min(stats.ST, stats.DX);
-            }
+            double successProb = RNG.GetProbability(stats.SuccessTarget);
+            double critProb = 1 - RNG.GetProbability(stats.CriticalTarget);
+            double failProb = 1 - successProb - critProb;
 
-            return new StatBlock(maxStat, midStat, minStat, stats.HT, stats.Longevity, stats.TL, stats.Fitness);
+            switch (result)
+            {
+                case eRollResult.Success:
+                    return successProb;
+                case eRollResult.Fail:
+                    return failProb;
+                case eRollResult.CriticalFail:
+                    return critProb;
+                default:
+                    return 0;
+            }
         }
 
     }

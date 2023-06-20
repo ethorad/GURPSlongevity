@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -63,25 +64,15 @@ namespace GurpsLongevity
             return res;
         }
 
-        internal StatBlock()
+        internal StatBlock(CharacterSheet cs)
         {
-            ST = 10;
-            DX = 10;
-            IQ = 10;
-            HT = 10;
-            Longevity = false;
-            TL = 3;
-            Fitness = eFitness.Normal;
-        }
-        internal StatBlock(int ST, int DX, int IQ, int HT, bool Longevity, int TL, eFitness Fitness)
-        {
-            this.ST = ST;
-            this.DX = DX;
-            this.IQ = IQ;
-            this.HT = HT;
-            this.Longevity = Longevity;
-            this.TL = TL;
-            this.Fitness = Fitness;
+            this.ST = cs.ST;
+            this.DX = cs.DX;
+            this.IQ = cs.IQ;
+            this.HT = cs.HT;
+            this.Longevity = cs.Longevity;
+            this.TL = cs.TL;
+            this.Fitness = cs.Fitness;
         }
         internal StatBlock(StatBlock parent, eRollResult STres, eRollResult DXres, eRollResult IQres, eRollResult HTres)
         {
@@ -107,23 +98,37 @@ namespace GurpsLongevity
             return 0;
         }
 
-        internal double GetProbability(eRollResult result)
+        internal void Sort()
         {
-            double successProb = RNG.GetProbability(SuccessTarget);
-            double critProb = 1 - RNG.GetProbability(CriticalTarget);
-            double failProb = 1 - successProb - critProb;
+            int maxStat = 0;
+            int midStat = 0;
+            int minStat = 0;
 
-            switch(result)
+            if (ST >= DX && ST >= IQ)
             {
-                case eRollResult.Success:
-                    return successProb;
-                case eRollResult.Fail:
-                    return failProb;
-                case eRollResult.CriticalFail:
-                    return critProb;
-                default:
-                    return 0;
+                // ST is highest
+                maxStat = ST;
+                midStat = Math.Max(DX, IQ);
+                minStat = Math.Min(DX, IQ);
             }
+            else if (DX >= ST && DX >= IQ)
+            {
+                // DX is highest
+                maxStat = DX;
+                midStat = Math.Max(ST, IQ);
+                minStat = Math.Min(ST, IQ);
+            }
+            else // IQ must be highest
+            {
+                maxStat = IQ;
+                midStat = Math.Max(ST, DX);
+                minStat = Math.Min(ST, DX);
+            }
+
+            ST = maxStat;
+            DX = midStat;
+            IQ = minStat;
         }
+
     }
 }
